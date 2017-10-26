@@ -1,0 +1,521 @@
+---
+title: "Bayesian Data Analysis Session 1"
+author: "Edwin Thoen"
+date: "10/2/2017"
+output: 
+  beamer_presentation
+---
+
+## Overview
+
+**Session 1: Edwin**
+
+What is Bayesian statistics? Theory and simple examples.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+# devtools::install_github("edwinth/tennis")
+library(tennis)
+name_to_last_name <- function(df, col) {
+  col_q <- enquo(col)
+  df %>% 
+    mutate(!!rlang::quo_name(col_q) := 
+             strsplit(!!col_q, " ") %>% map_chr(2))
+}
+rr <- tennis::atp_matches %>% 
+  tennis::find_matchup(c("Roger Federer", "Rafael Nadal")) %>% 
+  name_to_last_name(winner_name) %>% 
+  name_to_last_name(loser_name)
+
+ace_set <- atp_matches %>% 
+  find_player("Roger Federer", "Rafael Nadal", "Novak Djokovic", "Ivo Karlovic", "John Isner") %>% 
+  name_to_last_name(winner_name) %>% 
+  name_to_last_name(loser_name) 
+  
+# write_csv(rr, "./rr.csv")
+rr <- read_csv("./rr.csv")
+source("ggmm.R")
+```
+
+**Session 2: Rick**
+
+Building hierarchical models with Stan.
+
+# Introduction
+
+## Intuition of Bayesian Statistics
+
+Statistics describes the world in probality distributions. 
+
+Collect data to learn about the distributions: $\hat\theta$
+
+Reverse engineering of parameters producing the data.
+
+How do we deal with uncertainty?
+
+A Bayesian:
+
+- Sets a probabilty distribution on all $\theta$.
+- Updates his beliefs with data.
+
+## Set a prior: $P(\theta)$
+
+```{r, echo = FALSE}
+plot_data <- data_frame(theta = seq(0, 1, by = .001),
+                        prior = dbeta(theta, 4, 4),
+                        likelihood = theta^15 * (1-theta)^5,
+                        posterior  = dbeta(theta, 18, 8))
+settings <- function(gg_obj){
+  gg_obj + geom_line() + 
+  theme(axis.text.y  = element_blank(),
+        axis.ticks.y = element_blank()) +
+  ylab("")
+}
+ggplot(plot_data, aes(theta, prior)) %>% settings()
+```
+
+## Get the likelihood function: $P(D|\theta)$
+
+```{r, echo = FALSE}
+ggplot(plot_data, aes(theta, likelihood)) %>% settings()
+```
+
+## Update prior to posterior with likelihood: $P(\theta|D)$
+
+```{r, echo=FALSE}
+plot_data %>% select(-likelihood) %>% 
+  gather(key = distribution, value = dens, -theta) %>% 
+  ggplot(aes(theta, dens, col = distribution)) %>% settings()
+```
+
+Likelihood not in this plot, on different scale (why?).
+
+## Bayesian data analysis
+
+The essence of BDA is **credibility (re)allocation**.
+
+We have an a priori idea about $\theta$:
+  
+- expert opinion
+- previous research
+- educated guess
+
+Data provides evidence of the parameter value.
+
+The posterior is a compromise between prior and likelihood. It reflects the current knowledge.
+
+## Bayesian vs frequentist
+
+- Frequentist only consider the likelihood.
+
+- Frequentits have an objective view of probability. For Bayesians it is a subjective best guess.
+
+- Frequentists: data random, parameters fixed. Bayesians: data fixed, parameters random.
+
+## Why do we want BDA in the first place?
+
+- Elegant and intuitive paradigm.
+
+- Incorparation of previous knowledge and allowing for updating.
+
+- Describe complex relationships without huge amounts of data.
+
+# Probability
+
+## Considered known
+
+- sample space $\Omega$.
+
+- probability functions.
+
+- discrete and continuous random variables.
+
+- expected value and variance of random variables.
+
+- from probability distribution to likelihood.
+
+## Probability of multiple events
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name)
+```
+
+## Joints, marginals and conditionals
+
+(We assume the probabilities here as given, not as estimated.)
+
+The joint is the probability two events coincide. $P(A = a \cap B = b)$ or for brevity $P(A \cap B)$
+
+```{r, echo=FALSE}
+joint <- rr %>% select(winner_name, surface) %>%
+  table %>% prop.table() %>% round(3) %>% as.data.frame() %>% 
+  spread(surface, Freq)
+  
+knitr::kable(joint)
+```
+
+## Joints, marginals and conditionals
+
+The marginals are the univariate distributions of A and B. Sum over the other (or integrate them out when continuous).
+
+```{r, echo = FALSE}
+knitr::kable(joint[2:4] %>% colSums())
+players <- joint[2:4] %>% rowSums()
+names(players) <- c("Federer", "Nadal")
+knitr::kable(players)
+```
+
+## Joints, marginals and conditionals
+
+Conditionals, like $P(A|B)$, redefine $\Omega$, it is now a subset of the joint. $P(A|B) = P(A \cap B) / P(B)$
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name, surface == "Clay")
+```
+
+## Joints, marginals and conditionals
+
+For $P(B|A)$ this looks 
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name, player == "Nadal")
+```
+
+## Joints, marginals and conditionals
+
+With a continuous and discrete variable, a way to graph the data is
+
+```{r, echo = FALSE, message=FALSE}
+player_ace <- function(df, name) {
+  df %>% 
+    mutate(ace    = case_when(winner_name == name ~ w_ace %>% as.integer(), 
+                              loser_name  == name ~ l_ace %>% as.integer(),
+                              TRUE ~ NA_integer_),
+           player = name) %>% 
+    select(player, ace) %>% 
+    filter(!is.na(ace))
+}
+
+aces_set <- c("Nadal", "Federer", "Djokovic", "Isner", "Karlovic") %>% 
+  map_df(player_ace, df = ace_set) %>%
+  mutate(ace = as.integer(ace))
+
+joint_aces <- ggplot(aces_set, aes(ace)) +
+  geom_histogram(aes(fill = player), binwidth = 1, col = "black") +
+  xlim(c(-1, 45)) +
+  ggtitle("Aces per match, for five players")
+
+joint_aces
+```
+## Marginal for players
+
+What does the marginal for the players look like?
+
+```{r, echo = FALSE}
+ggplot(aces_set, aes(player)) +
+  geom_bar(aes(fill = player)) +
+  guides(fill = FALSE)
+```
+
+## Conditionals
+
+$P(ace|player)$
+
+```{r, echo = FALSE}
+ggplot(aces_set, aes(ace, player)) +
+  ggridges::geom_density_ridges(aes(fill = player)) +
+  guides(fill = FALSE) +
+  xlim(c(-1, 45))
+```
+
+## Conditionals
+
+$P(player|ace > 15)$
+
+```{r, echo = FALSE}
+joint_aces +
+  geom_vline(xintercept = 15, col = "red")
+```
+
+## Conditionals
+
+```{r}
+aces_set %>% 
+  filter(ace > 15) %>% 
+  count(player) %>% 
+  mutate(prop = n / sum(n)) %>% 
+  ggplot(aes(player, prop)) +
+  geom_bar(aes(fill = player), stat = "identity") +
+  guides(fill = FALSE)
+```
+
+## Two continuous variables
+
+```{r, echo = FALSE}
+atp_2016 <- atp_matches %>% 
+  filter(tourney_date %>% between(20160000, 20170000))
+
+aces_height <- bind_rows(
+  atp_2016 %>% select(name = winner_name, height = winner_ht, ace = w_ace),
+  atp_2016 %>% select(name = loser_name, height = loser_ht, ace = l_ace)
+) %>% 
+  filter(!is.na(height)) %>% 
+  group_by(name) %>% 
+  filter(n() > 9) %>% 
+  summarise(height   = max(height),
+            mean_aces = mean(ace %>% as.numeric, na.rm = TRUE))
+  
+cont_plot <- ggplot(aces_height, aes(height, mean_aces)) +
+  geom_point(alpha = .5) +
+  expand_limits(y = 0)
+cont_plot
+```
+
+## Two continuous variables
+
+The marginals are the univariate densities. With discrete variables we could sum over B to get marginal A. With continuous variables we need to integrate the other out.
+
+$P(A) = \int P(A,B)db$
+
+Also here we normalize by the marginal to get the conditional.
+
+$P(A|B) = P(A,B) / P(B)$
+
+## Two continuous variables
+$P(a > 10 | h > 190)$
+
+```{r, echo = FALSE}
+xr <- ggplot_build(cont_plot)$layout$panel_ranges[[1]]$x.range[2]
+yr <- ggplot_build(cont_plot)$layout$panel_ranges[[1]]$y.range[2]
+cont_plot +
+  annotate("rect", xmin = 190.5, xmax = xr, ymin = 10, 
+           ymax = yr, fill = "cornflowerblue", alpha = .7) +
+    annotate("rect", xmin = 190.5, xmax = xr, ymin = 0, 
+           ymax = yr, fill = "cornflowerblue", alpha = .5)
+```
+
+## Bayes' Rule
+
+We all learned it in Introduction to Stats.
+
+$$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$$
+
+follows from combining
+
+$P(A,B) = P(B|A) P(A)$
+
+and 
+
+$P(A|B) = P(A,B) / P(B)$
+
+## Bayes' Rule
+
+Intuition:
+
+- take the known conditional
+- convert it to the joint by multiplying by the marginal
+- obtain the desired conditional by dividing by the other marginal
+
+## Bayes' Rule
+
+Example: Probability Federer wins the next match on Clay. 
+
+We only know: proportion Federer wins(.343), proportion of Federer wins were on Clay (.167),
+and proportion of matches played on clay (.429).
+
+## Bayes' Rule
+
+Going from the conditional to the joint:
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name, winner_name == "Federer")
+```
+
+## Bayes' Rule
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name, surface == "Clay" & winner_name == "Federer")
+```
+
+## Bayes' Rule
+
+```{r, echo = FALSE}
+ggmm(rr, surface, winner_name, surface == "Clay")
+```
+
+## Bayes' Rule
+
+We can rewrite the marginal in the denominator for a discrete case as:
+
+$$P(A=a|B) = \frac{P(B|A=a) P(A =a)}{\Sigma_i P(B|A =a_i)P(A = a_i)}$$ 
+
+And for a continuous case this is:
+
+$$P(A=a|B) = \frac{P(B|A=a) P(A =a)}{\int P(B|A)p(A)da}$$
+
+## Bayesian Analysis
+
+Remember we put a prior distribution on a parameter. 
+
+We then use the data to obtain the likelihood.
+
+We multiply the two into to obtain the posterior.
+
+$$P(\theta|D) \propto P(D|\theta) P(\theta)$$
+Proprotional because AUC is not equal to 1.
+
+## Bayesian Analysis
+
+Now following Bayes' Rule, to normalize to a probability distribution we have divide by the likelihood.
+
+$$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}$$
+
+Which we can rewrite as:
+
+$$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{\int P(D|\theta)P(\theta)d\theta}$$
+
+Note that in $P(\theta|D)$ and in the numerator we refer to a specific value of $\theta$. In the demoninator it is a function of \theta (remember summing over all the values of $B$).
+
+## Conjugate prior
+
+We want to test if one player is better than the other. We can do this by estimating the bernoulli probability of player A beating player B.
+
+Bernoulli density: $p(X=1) = \theta^x(1-\theta)^{(1-x)}$
+
+makes the Bernoulli likelihood: $p(X=1) = \theta^z(1-\theta)^{(n-z)}$
+
+where $z = \Sigma x=1$ and $n$ is number of observations.
+
+## Conjugate prior
+
+What prior to set on this probability?
+
+$\theta$ must be $[0,1]$, so distribution must be limited.
+
+The beta distribution: $p(X=x)=\frac{x^{\alpha-1}(1-x)^{\beta-1}}{B(\alpha, \beta)}$
+
+We are placing this distribution on $\theta$, so $x = \theta$ in the above.
+
+## Conjugate prior
+
+The denominator is just a normalizing constant, does not depend on $\theta$
+
+Thus:
+
+$$ P(\theta) \propto \theta^{\alpha-1}(1-\theta)^{\beta-1}$$
+and
+
+$$ P(\theta|D) \propto \theta^z(1-\theta)^{n-z} \theta^{\alpha-1}(1-\theta)^{\beta-1}
+               \propto \theta^{z+\alpha-1}(1-\theta)^{n-z+\beta-1}$$
+
+Note that this is again the denominator of a Beta, we use the same parameters to normalize.
+
+The posterior is thus $Beta(z+\alpha-1, n-z+\beta-1)$.
+
+In conjugacy the prior has the same functional form as the likelihood, and can be updated without solving the integral.
+
+## Conjugate prior
+
+$\theta = P(Federer)$, no a priori idea. Set an uninformative prior, $Beta(1, 1)$
+
+```{r, echo = FALSE}
+theta <- seq(0,1,.001)
+prior_data <- data.frame(theta = theta, 
+                         prior = dbeta(theta, 1, 1),
+                         posterior = dbeta(theta, 12, 23))
+ggplot(prior_data, aes(theta, prior)) +
+  geom_line() +
+  ylab("") +
+  labs(title = "Uninformative prior",
+       subtitle = "alpha = 1, beta = 1")
+```
+
+## Conjugate prior
+
+Federer won 12 out of 35 matches. So posterior is $Beta(12, 23)$.
+
+```{r, echo = FALSE}
+posterior_plot <- 
+  ggplot(prior_data, aes(theta, posterior)) +
+  geom_line() +
+  ylab("") +
+  labs(title = "Posterior",
+       subtitle = "alpha = 12, beta = 23")
+```
+
+## HDI 
+
+95% highest posterior density interval.
+
+```{r, echo=FALSE}
+x_range <- qbeta(c(.025, .975), 12, 23)
+posterior_plot +
+    annotate("rect", xmin = x_range[1], xmax = x_range[2], ymin = 0, 
+           ymax = .3, fill = "firebrick", alpha = .7)
+```
+
+$\theta = 0.5$ is just in this interval.
+
+## The challenge of Bayesian estimation
+
+Conjugacy makes it very easy to obtain posterior. However, only works for very simple situation.
+
+Usually models involve many $\theta$'s. 
+
+Integral in denominator cannot be solved.
+
+Made Bayesian statistics a solely theoretical exercise for decades.
+
+## Normalizing by sampling
+
+We can no longer normalize by the marginal, because of too complex integrals.
+
+Draws from a function proportional to a distribution are the same as draws from the actual distribution.
+
+1. Draw many samples from the proportional distribution.
+
+2. Calculate summary statistics, these descrice the posterior.
+
+## Acceptance-Rejection sampling
+
+For a function $f(x)$
+
+1. Determine the x-range.
+
+2. Draw $p$ samples from the x-range.
+
+3. Draw $p$ samples from $U(0, max(f(x)))$.
+
+4. Compare 2. and 3. on index. If 2. >= 3. accept, else reject.
+
+## Acceptance-Rejection sampling
+
+```{r, echo=FALSE}
+half_beta <- function(x) dbeta(x, 4, 4) * .5
+
+beta_max <- half_beta(0.5)
+acc_rej_data <-data_frame(theta = runif(10^4, 0, 1),
+                          unif  = runif(10^4, 0, beta_max)) %>% 
+  mutate(accepted = as.numeric(half_beta(theta) > unif) %>% as.character)
+ggplot(acc_rej_data, aes(theta, unif, col = accepted)) +
+  geom_point()
+```
+
+## Acceptance-Rejection sampling
+
+```{r}
+stats <- acc_rej_data %>% 
+  filter(accepted == '1') %>% 
+  summarise(mn = mean(theta), 
+            sd = sd(theta))
+
+est_beta <- function(mu, sd) {
+  var   <- sd^2
+  alpha <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+  beta  <- alpha * (1 / mu - 1)
+  c(alpha = alpha, beta = beta)
+}
+
+est_beta(stats$mn, stats$sd) %>% round(3)
+```
+
