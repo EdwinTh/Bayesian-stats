@@ -1,0 +1,108 @@
+---
+title: "Bayesian stats assignments 1"
+author: "Edwin and Rick"
+date: "29/11/2017"
+output: html_document
+---
+
+This set of assignments accompanies the first slides. It comprises three parts, about probabilities, conjugate priors and acceptance-rejection sampling. 
+
+If you'd rather complete these assignments in python than R, than you are most welcome to do so.
+
+## 1 Probabilities
+
+
+## 2 Conjugacy
+
+The beta distribution is a natural prior to the parameter of the binomial distribution, because of the conjugacy. 
+
+2.1 Write a function that takes alpha and beta as its parameters and plots the density of the beta distribution with the given parameters on a fine grid between 0 and 1.
+
+```{r}
+library(ggplot2)
+plot_beta <- function(alpha, beta) {
+  plot_data   <- data.frame(x = seq(0, 1, by = .005))
+  plot_data$y <- dbeta(plot_data$x, alpha, beta)
+  ggplot(plot_data, aes(x, y)) + geom_line()
+}
+```
+
+2.2 Play around with the parameters to get a feel for the beta distribution. Can you find parameter settings that give a uniform prior (equal credibility over between 0 and 1)?
+
+```{r}
+plot_beta(1, 1)
+```
+
+2.3 Arjan's parents have 7 grand sons and no grand daughters, is this chance or is there a boy predisposition for this generation Van den Heuvels? Let $x$ be the probability that a baby in this generation of the family is a boy. Use the uniform prior from 2.2, what is the posterior?
+
+```{r}
+plot_beta(8, 1)
+```
+
+2.4 Interpret the distribution.
+
+```{r}
+1 - pbeta(0.5, 8, 1)
+
+# almost all credibility right of 0.5, seems like a strong tendency towards boys in the family.
+```
+
+2.5 Do we have an a priori belief about the probability on getting a boy or girl? Is a uniform prior realistic? Redo the analysis with a more informed prior.
+
+```{r}
+# it is well known that the probability of having a boy is around 0.5 and there
+# is no research indicating dependency between first and later born.
+
+# a prior like 20, 20 seems justified
+plot_beta(20, 20)
+plot_beta(27, 20)
+```
+
+With this prior we see it is very well likely due to chance that there are 7 VDH boys.
+
+## 3 Acceptance-rejection
+
+The nice and juicy website moordatlas.nl records all the cases of murder for the last year. The extract moordata.csv contains the weekly counts of murders on this website. 
+
+3.1 Read this data.
+
+```{r}
+moord <- read_csv("moorddata.csv")
+```
+
+3.2  Lets assume that the number of murders in one week is independent of the number of murders in the weeks before. What would be a suitable distribution to model this data?
+
+https://en.wikipedia.org/wiki/Poisson_distribution
+
+3.3 What is the expected value of this distribution? Without looking at the data, what do you think is a reasonable range for lambda. Translate this in a suitable prior.
+
+```{r}
+# lambda is the expected value, say we expect about three murders a week
+x <- seq(0, 12, .01)
+data.frame(x, y = dgamma(x, sqrt(3), sqrt(3))) %>% 
+  ggplot(aes(x, y)) + geom_line()
+```
+
+3.4 Plot the data and derive the likelihood for lambda.
+
+```{r}
+ggplot(moord, aes(n)) + geom_bar()
+```
+
+```{r}
+poisson_likelihood <- function(lambda, x) {
+  prod(dpois(x, lambda))
+}
+```
+
+3.5 Multiply prior and likelihood and apply acceptance-rejection sampling on the range 0-12 for lambda.
+
+```{r}
+lambda_range <- seq(0, 12, by = .01)
+func_val <- map_dbl(lambda_range, poisson_likelihood, x = moord$n) * 
+  dgamma(lambda_range, sqrt(3), sqrt(3))
+  
+```
+
+
+
