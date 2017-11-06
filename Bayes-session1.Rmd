@@ -45,13 +45,14 @@ Building hierarchical models with Stan.
 
 ## Intuition of Bayesian Statistics
 
-Statistics describes the world in probality distributions. 
+A Statistician:
 
-Collect data to learn about the distributions: $\hat\theta$
+Describes the world in probality distributions, these distributions have parameters $\theta$.
 
-Reverse engineering of parameters producing the data.
+Collects data to learn about the distributions: $\hat\theta$.
 
-How do we deal with uncertainty?
+How do we deal with uncertainty due to estimation?
+
 
 A Bayesian:
 
@@ -159,7 +160,9 @@ knitr::kable(joint)
 The marginals are the univariate distributions of A and B. Sum over the other (or integrate them out when continuous).
 
 ```{r, echo = FALSE}
-knitr::kable(joint[2:4] %>% colSums())
+surfaces <- (joint[2:4] %>% colSums() %>% as.data.frame() %>% t())
+rownames(surfaces) <- NULL
+knitr::kable(surfaces)
 players <- joint[2:4] %>% rowSums()
 names(players) <- c("Federer", "Nadal")
 knitr::kable(players)
@@ -178,7 +181,7 @@ ggmm(rr, surface, winner_name, surface == "Clay")
 For $P(B|A)$ this looks 
 
 ```{r, echo = FALSE}
-ggmm(rr, surface, winner_name, player == "Nadal")
+ggmm(rr, surface, winner_name, winner_name == "Nadal")
 ```
 
 ## Joints, marginals and conditionals
@@ -221,7 +224,7 @@ ggplot(aces_set, aes(player)) +
 
 $P(ace|player)$
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message = FALSE}
 ggplot(aces_set, aes(ace, player)) +
   ggridges::geom_density_ridges(aes(fill = player)) +
   guides(fill = FALSE) +
