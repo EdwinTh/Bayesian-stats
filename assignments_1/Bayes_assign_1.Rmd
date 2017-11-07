@@ -71,16 +71,24 @@ moord <- read_csv("moorddata.csv")
 
 https://en.wikipedia.org/wiki/Poisson_distribution
 
-2.3 What is the expected value of this distribution? Without looking at the data, what do you think is a reasonable range for lambda. Translate this in a suitable prior.
+2.3 What is the expected value of this distribution? Lets say we expect 1 or 2 murders most weeks, what value of lambda would be suitable?
 
 ```{r}
-# lambda is the expected value, say we expect about three murders a week
-x <- seq(0, 12, .01)
-data.frame(x, y = dgamma(x, sqrt(3), scale = sqrt(3))) %>% 
-  ggplot(aes(x, y)) + geom_line()
+data_frame(x = 0:10, y = dpois(x, 2)) %>% 
+  ggplot(aes(x, y)) + geom_bar(stat = "identity", width = .5)
 ```
 
-2.4 Plot the data and derive the likelihood for lambda.
+2.4 Could we use a Normal(2, 1) prior for lambda? If not, what would be a suitable distribution?
+
+```{r}
+# lambda is strictly positive so we should not use a distribution that has a domain on negative values
+prior_df <- data_frame(x = seq(0, 12, .01),
+                       y = dgamma(seq(0, 12, .01), shape = 2, scale = 2))
+ggplot(prior_df, aes(x, y)) + geom_line()
+```
+
+
+2.5 Plot the data and derive the likelihood for lambda.
 
 ```{r}
 ggplot(moord, aes(n)) + geom_bar()
@@ -90,30 +98,50 @@ ggplot(moord, aes(n)) + geom_bar()
 poisson_likelihood <- function(lambda, x) {
   prod(dpois(x, lambda))
 }
-lik_frame <- data_frame(lambda = seq(0, 10, by = .05))
+
+lik_frame     <- data_frame(lambda = seq(0, 10, by = .05))
 lik_frame$lik <- map_dbl(lik_frame$lambda, poisson_likelihood, x = moord$n)
 ggplot(lik_frame, aes(lambda, lik)) + geom_line()
 ```
 
-2.5 Write a function to apply in acceptance-rejection sampling, in which the prior and the likelihood are multiplied for a given value of lambda.
+2.6 Write a function to apply in acceptance-rejection sampling, in which the prior and the likelihood are multiplied for a given value of lambda. 
 
 ```{r}
 ar_function <- function(lambda,
-                        x,
-                        prior_func = dgamma(theta, 3, 3),
-                        lik_func   = poisson_likelihood(theta, x)) {
-  prior_func(lambda) * lik_func(lambda, x)
+                        x, 
+                        prior      = dgamma(lambda, shape = 2, scale = 2),
+                        likelihood = poisson_likelihood(lambda, x)) {
+  prior * likelihood
 }
-ar_function()
 ```
 
+2.7 Determine the highest value of the prior x likelihood function, which will be your max for the acceptance-rejection sampling. (See peak in the likelihood to determine your grid).
 
 ```{r}
-lambda_range <- seq(0, 12, by = .01)
-func_val <- map_dbl(lambda_range, poisson_likelihood, x = moord$n) * 
-  dgamma(lambda_range, sqrt(3), sqrt(3))
-  
+lambda_range <- seq(2, 3, by = .001)
+max_val <- purrr::map_dbl(lambda_range, ar_function, x = moord$n) %>% max()
 ```
+
+2.7 Now we do the actual sampling. Sample a large number of observations between 0 and your answer at 2.6 (x1) and (the same) large number on the range 0 and 12 (x2). Accept if the function at 2.5 of x2 is smaller than its corresponding x1 value, reject otherwise. Make a plot as in the slides.
+
+```{r}
+n <- 10^5
+ar <- data_frame(x1 = runif(n, 0, max_val),
+           x2 = runif(n, 0, 12)) %>% 
+  mutate(f_x2 = map_dbl(x2, ar_function, x = moord$n)) %>% 
+  mutate(accepted = as.character(f_x2 > x1))
+ggplot(ar, aes(x2, x1)) + geom_point(aes(col = accepted))
+```
+
+2.8 Use the accepted samples to obtain the statistics of the posterior. Get the statiscs and plot the posterior.
+
+```{r}
+ar %>% 
+  filter(accepted == TRUE) %>% 
+  summarise(mn = mean(x2), sd = sd(x2))
+```
+
+2.9 Does the prior or the likelihood dominate the posterior? Would you expect this from the shapes of the prior and the likelihood.
 
 
 

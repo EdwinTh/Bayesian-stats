@@ -489,7 +489,7 @@ For a function $f(x)$
 
 3. Draw $p$ samples from $U(0, max(f(x)))$.
 
-4. Compare 2. and 3. on index. If 2. >= 3. accept, else reject.
+4. Compare 2. and 3. on index. If $f(2.) >= 3.$ accept, else reject.
 
 ## Acceptance-Rejection sampling
 
