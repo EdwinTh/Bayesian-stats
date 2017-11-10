@@ -39,7 +39,7 @@ source("ggmm.R")
 
 **Session 2: Rick**
 
-Building hierarchical models with Stan.
+Introduction MCMC and building hierarchical models with Stan.
 
 # Introduction
 
@@ -521,4 +521,6 @@ est_beta <- function(mu, sd) {
 
 est_beta(stats$mn, stats$sd) %>% round(3)
 ```
+
+
 

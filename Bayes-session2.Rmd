@@ -1,0 +1,18 @@
+---
+title: "Bayesian Data Analysis Session 2"
+author: "Rick Rijkse"
+date: "10/2/2017"
+output: 
+  beamer_presentation
+---
+
+## Recap
+
+With Bayesian stats we put a distribution on the model parameters. They get updated by observed data.
+
+$$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}$$
+
+It is almost always infeasable to obtain the posterior directly, because the marginal $P(D)$ is too complex to obtain.
+
+We have seen that we can use sampling to normalize the posterior.
+
