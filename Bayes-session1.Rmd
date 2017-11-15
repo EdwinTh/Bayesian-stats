@@ -163,8 +163,8 @@ The marginals are the univariate distributions of A and B. Sum over the other (o
 surfaces <- (joint[2:4] %>% colSums() %>% as.data.frame() %>% t())
 rownames(surfaces) <- NULL
 knitr::kable(surfaces)
-players <- joint[2:4] %>% rowSums()
-names(players) <- c("Federer", "Nadal")
+players <- joint[2:4] %>% rowSums() %>% as.data.frame() %>% t()
+colnames(players) <- c("Federer", "Nadal")
 knitr::kable(players)
 ```
 
