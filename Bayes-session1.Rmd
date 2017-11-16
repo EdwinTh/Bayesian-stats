@@ -2,8 +2,7 @@
 title: "Bayesian Data Analysis Session 1"
 author: "Edwin Thoen"
 date: "10/2/2017"
-output: 
-  beamer_presentation
+output: beamer_presentation
 ---
 
 ## Overview
@@ -165,6 +164,7 @@ rownames(surfaces) <- NULL
 knitr::kable(surfaces)
 players <- joint[2:4] %>% rowSums() %>% as.data.frame() %>% t()
 colnames(players) <- c("Federer", "Nadal")
+rownames(players) <- ""
 knitr::kable(players)
 ```
 
@@ -297,7 +297,7 @@ cont_plot +
            ymax = yr, fill = "cornflowerblue", alpha = .5)
 ```
 
-## Bayes' Rule
+## Bayes Rule
 
 We all learned it in Introduction to Stats.
 
@@ -311,7 +311,7 @@ and
 
 $P(A|B) = P(A,B) / P(B)$
 
-## Bayes' Rule
+## Bayes Rule
 
 Intuition:
 
@@ -319,14 +319,14 @@ Intuition:
 - convert it to the joint by multiplying by the marginal
 - obtain the desired conditional by dividing by the other marginal
 
-## Bayes' Rule
+## Bayes Rule
 
 Example: Probability Federer wins the next match on Clay. 
 
 We only know: proportion Federer wins(.343), proportion of Federer wins were on Clay (.167),
 and proportion of matches played on clay (.429).
 
-## Bayes' Rule
+## Bayes Rule
 
 Going from the conditional to the joint:
 
@@ -334,19 +334,19 @@ Going from the conditional to the joint:
 ggmm(rr, surface, winner_name, winner_name == "Federer")
 ```
 
-## Bayes' Rule
+## Bayes Rule
 
 ```{r, echo = FALSE}
 ggmm(rr, surface, winner_name, surface == "Clay" & winner_name == "Federer")
 ```
 
-## Bayes' Rule
+## Bayes Rule
 
 ```{r, echo = FALSE}
 ggmm(rr, surface, winner_name, surface == "Clay")
 ```
 
-## Bayes' Rule
+## Bayes Rule
 
 We can rewrite the marginal in the denominator for a discrete case as:
 
@@ -369,15 +369,15 @@ Proprotional because AUC is not equal to 1.
 
 ## Bayesian Analysis
 
-Now following Bayes' Rule, to normalize to a probability distribution we have divide by the likelihood.
+Now following Bayes Rule, to normalize to a probability distribution we have divide by the likelihood.
 
 $$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}$$
 
-Which we can rewrite as:
+Which we can rewrite as
 
 $$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{\int P(D|\theta)P(\theta)d\theta}$$
 
-Note that in $P(\theta|D)$ and in the numerator we refer to a specific value of $\theta$. In the demoninator it is a function of \theta (remember summing over all the values of $B$).
+Note that in $P(\theta|D)$ and in the numerator we refer to a specific value of $\theta$. In the demoninator it is a function of $\theta$ (remember summing over all the values of $B$).
 
 ## Conjugate prior
 
@@ -463,7 +463,7 @@ $\theta = 0.5$ is just in this interval.
 
 Conjugacy makes it very easy to obtain posterior. However, only works for very simple situation.
 
-Usually models involve many $\theta$'s. 
+Usually models involve many $\theta$s. 
 
 Integral in denominator cannot be solved.
 
@@ -521,6 +521,5 @@ est_beta <- function(mu, sd) {
 
 est_beta(stats$mn, stats$sd) %>% round(3)
 ```
-
 
 
