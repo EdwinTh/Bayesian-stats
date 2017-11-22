@@ -188,7 +188,7 @@ ggmm(rr, surface, winner_name, winner_name == "Nadal")
 
 With a continuous and discrete variable, a way to graph the data is
 
-```{r, echo = FALSE, message=FALSE}
+```{r, echo = FALSE, message=FALSE, warning= FALSE, fig.height=7}
 player_ace <- function(df, name) {
   df %>% 
     mutate(ace    = case_when(winner_name == name ~ w_ace %>% as.integer(), 
@@ -210,6 +210,7 @@ joint_aces <- ggplot(aces_set, aes(ace)) +
 
 joint_aces
 ```
+
 ## Marginal for players
 
 What does the marginal for the players look like?
@@ -224,7 +225,7 @@ ggplot(aces_set, aes(player)) +
 
 $P(ace|player)$
 
-```{r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE, warning=FALSE, height = 7}
 ggplot(aces_set, aes(ace, player)) +
   ggridges::geom_density_ridges(aes(fill = player)) +
   guides(fill = FALSE) +
@@ -235,14 +236,14 @@ ggplot(aces_set, aes(ace, player)) +
 
 $P(player|ace > 15)$
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning=FALSE, height = 7}
 joint_aces +
   geom_vline(xintercept = 15, col = "red")
 ```
 
 ## Conditionals
 
-```{r}
+```{r, echo = FALSE}
 aces_set %>% 
   filter(ace > 15) %>% 
   count(player) %>% 

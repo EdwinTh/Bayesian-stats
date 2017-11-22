@@ -43,7 +43,7 @@ We know that beta-binomial is conjugate, so we check with the analytical solutio
 Lets do a $Beta(3, 3)$ posterior and a 31 successes out of 44 likelihood. 
 Posterior is $Beta(34, 16)$.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5}
 library(tidyverse)
 analytical <- data_frame(theta = seq(0, 1, by = .01)) %>% 
   mutate(posterior = dbeta(theta, 34, 16)) 
@@ -73,7 +73,8 @@ theta_frame <- data_frame(iteration = 1:2000, theta = 0)
 for(i in 1:nrow(theta_frame)) {
   theta_frame$theta[i] <- current_theta
   proposed <- rnorm(1, current_theta, 0.05)
-  accept <- (posterior_prop(proposed) / posterior_prop(current_theta)) >
+  accept <- (posterior_prop(proposed) / 
+               posterior_prop(current_theta)) > 
     runif(1)
   if (accept) current_theta <- proposed
 }
@@ -81,7 +82,7 @@ for(i in 1:nrow(theta_frame)) {
 
 ## Metropolis
 
-```{r}
+```{r, echo=FALSE}
 ggplot(theta_frame, aes(iteration, theta)) +
   geom_point() +
   geom_step() +
