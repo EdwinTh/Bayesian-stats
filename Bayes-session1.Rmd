@@ -102,13 +102,13 @@ We have an a priori idea about $\theta$:
 
 Data provides evidence of the parameter value.
 
-The posterior is a compromise between prior and likelihood. It reflects the current knowledge.
+The posterior is a compromise between prior and likelihood. It reflects the latest state of knowledge.
 
 ## Bayesian vs frequentist
 
-- Frequentist only consider the likelihood.
+- Frequentist only considers the likelihood.
 
-- Frequentits have an objective view of probability. For Bayesians it is a subjective best guess.
+- Frequentits have an objective view of probability (limiting proportion). For Bayesians it is a subjective best guess.
 
 - Frequentists: data random, parameters fixed. Bayesians: data fixed, parameters random.
 
@@ -118,7 +118,7 @@ The posterior is a compromise between prior and likelihood. It reflects the curr
 
 - Incorparation of previous knowledge and allowing for updating.
 
-- Describe complex relationships without huge amounts of data.
+- Describe complex relationships without huge amounts of data. No overfitting.
 
 # Probability
 
@@ -213,13 +213,13 @@ joint_aces
 
 ## Marginal for players
 
-What does the marginal for the players look like?
-
 ```{r, echo = FALSE}
 ggplot(aces_set, aes(player)) +
   geom_bar(aes(fill = player)) +
   guides(fill = FALSE)
 ```
+
+What does the marginal for the nr of aces look like?
 
 ## Conditionals
 
@@ -300,7 +300,6 @@ cont_plot +
 
 ## Bayes Rule
 
-We all learned it in Introduction to Stats.
 
 $$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$$
 
@@ -322,30 +321,26 @@ Intuition:
 
 ## Bayes Rule
 
-Example: Probability Federer wins the next match on Clay. 
+Federer wins .34 of the matches. 
 
-We only know: proportion Federer wins(.343), proportion of Federer wins were on Clay (.167),
-and proportion of matches played on clay (.429).
+.17 of his wins were on clay.
 
-## Bayes Rule
+Of all the meetings, .43 were on clay.
 
-Going from the conditional to the joint:
-
-```{r, echo = FALSE}
-ggmm(rr, surface, winner_name, winner_name == "Federer")
-```
+What is the probability Federer wins next Clay match?
 
 ## Bayes Rule
 
-```{r, echo = FALSE}
-ggmm(rr, surface, winner_name, surface == "Clay" & winner_name == "Federer")
+Asked is $P(F|C)$.
+
+Marginals: $P(F)=.34$ and $P(C)=.43$.
+
+The conditionsl $P(C|F)= .17$.
+
+```{r}
+round(.34 * .17 / .43, 2)
 ```
 
-## Bayes Rule
-
-```{r, echo = FALSE}
-ggmm(rr, surface, winner_name, surface == "Clay")
-```
 
 ## Bayes Rule
 
@@ -370,7 +365,7 @@ Proprotional because AUC is not equal to 1.
 
 ## Bayesian Analysis
 
-Now following Bayes Rule, to normalize to a probability distribution we have divide by the likelihood.
+Now following Bayes Rule, to normalize to a probability distribution we have divide by the probability we observe this data.
 
 $$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{P(D)}$$
 
@@ -378,15 +373,13 @@ Which we can rewrite as
 
 $$P(\theta|D) = \frac{P(D|\theta) P(\theta)}{\int P(D|\theta)P(\theta)d\theta}$$
 
-Note that in $P(\theta|D)$ and in the numerator we refer to a specific value of $\theta$. In the demoninator it is a function of $\theta$ (remember summing over all the values of $B$).
-
 ## Conjugate prior
 
 We want to test if one player is better than the other. We can do this by estimating the bernoulli probability of player A beating player B.
 
 Bernoulli density: $p(X=1) = \theta^x(1-\theta)^{(1-x)}$
 
-makes the Bernoulli likelihood: $p(X=1) = \theta^z(1-\theta)^{(n-z)}$
+makes the Bernoulli likelihood: $L(\theta) = \theta^z(1-\theta)^{(n-z)}$
 
 where $z = \Sigma x=1$ and $n$ is number of observations.
 
