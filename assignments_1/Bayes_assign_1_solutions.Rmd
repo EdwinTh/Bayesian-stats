@@ -15,13 +15,45 @@ The beta distribution is a natural prior to the parameter of the binomial distri
 
 1.1 Write a function that takes alpha and beta as its parameters and plots the density of the beta distribution with the given parameters on a fine grid between 0 and 1.
 
+```{r, message = FALSE}
+library(tidyverse)
+plot_beta <- function(alpha, beta) {
+  plot_data   <- data.frame(x = seq(0, 1, by = .005))
+  plot_data$y <- dbeta(plot_data$x, alpha, beta)
+  ggplot(plot_data, aes(x, y)) + geom_line()
+}
+```
+
 1.2 Play around with the parameters to get a feel for the beta distribution. Can you find parameter settings that give a uniform prior (equal credibility over between 0 and 1)?
+
+```{r}
+plot_beta(1, 1)
+```
 
 1.3 Arjan's parents have 7 grand sons and no grand daughters, is this chance or is there a boy predisposition for this generation Van den Heuvels? Let $x$ be the probability that a baby in this generation of the family is a boy. Use the uniform prior from 2.2, what is the posterior?
 
+```{r}
+plot_beta(8, 1)
+```
+
 1.4 Interpret the distribution.
 
+```{r}
+1 - pbeta(0.5, 8, 1)
+
+# almost all credibility right of 0.5, seems like a strong tendency towards boys in the family.
+```
+
 1.5 Do we have an a priori belief about the probability on getting a boy or girl? Is a uniform prior realistic? Redo the analysis with a more informed prior.
+
+```{r}
+# it is well known that the probability of having a boy is around 0.5 and there
+# is no research indicating dependency between first and later born.
+
+# a prior like 20, 20 seems justified
+plot_beta(20, 20)
+plot_beta(27, 20)
+```
 
 With this prior we see it is very well likely due to chance that there are 7 VDH boys.
 
@@ -37,20 +69,77 @@ moord <- read_csv("moorddata.csv")
 
 2.2  Lets assume that the number of murders in one week is independent of the number of murders in the weeks before. What would be a suitable distribution to model this data?
 
+https://en.wikipedia.org/wiki/Poisson_distribution
 
 2.3 What is the expected value of this distribution? Lets say we expect 1 or 2 murders most weeks, what value of lambda would be suitable?
 
+```{r}
+data_frame(x = 0:10, y = dpois(x, 2)) %>% 
+  ggplot(aes(x, y)) + geom_bar(stat = "identity", width = .5)
+```
+
 2.4 Could we use a Normal(2, 1) prior for lambda? If not, what would be a suitable distribution?
+
+```{r}
+# lambda is strictly positive so we should not use a distribution that has a domain on negative values
+prior_df <- data_frame(x = seq(0, 12, .01),
+                       y = dgamma(seq(0, 12, .01), shape = 2, scale = 2))
+ggplot(prior_df, aes(x, y)) + geom_line()
+```
+
 
 2.5 Plot the data and derive the likelihood for lambda.
 
+```{r}
+ggplot(moord, aes(n)) + geom_bar()
+```
+
+```{r}
+poisson_likelihood <- function(lambda, x) {
+  prod(dpois(x, lambda))
+}
+
+lik_frame     <- data_frame(lambda = seq(0, 10, by = .05))
+lik_frame$lik <- map_dbl(lik_frame$lambda, poisson_likelihood, x = moord$n)
+ggplot(lik_frame, aes(lambda, lik)) + geom_line()
+```
+
 2.6 Write a function to apply in acceptance-rejection sampling, in which the prior and the likelihood are multiplied for a given value of lambda. 
+
+```{r}
+ar_function <- function(lambda,
+                        x, 
+                        prior      = dgamma(lambda, shape = 2, scale = 2),
+                        likelihood = poisson_likelihood(lambda, x)) {
+  prior * likelihood
+}
+```
 
 2.7 Determine the highest value of the prior x likelihood function, which will be your max for the acceptance-rejection sampling. (See peak in the likelihood to determine your grid).
 
+```{r}
+lambda_range <- seq(2, 3, by = .001)
+max_val <- purrr::map_dbl(lambda_range, ar_function, x = moord$n) %>% max()
+```
+
 2.7 Now we do the actual sampling. Sample a large number of observations between 0 and your answer at 2.6 (x1) and (the same) large number on the range 0 and 12 (x2). Accept if the function at 2.5 of x2 is smaller than its corresponding x1 value, reject otherwise. Make a plot as in the slides.
 
+```{r}
+n <- 10^5
+ar <- data_frame(x1 = runif(n, 0, max_val),
+           x2 = runif(n, 0, 12)) %>% 
+  mutate(f_x2 = map_dbl(x2, ar_function, x = moord$n)) %>% 
+  mutate(accepted = as.character(f_x2 > x1))
+ggplot(ar, aes(x2, x1)) + geom_point(aes(col = accepted))
+```
+
 2.8 Use the accepted samples to obtain the statistics of the posterior. Get the statiscs and plot the posterior.
+
+```{r}
+ar %>% 
+  filter(accepted == TRUE) %>% 
+  summarise(mn = mean(x2), sd = sd(x2))
+```
 
 2.9 Does the prior or the likelihood dominate the posterior? Would you expect this from the shapes of the prior and the likelihood.
 
